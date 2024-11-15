@@ -103,7 +103,7 @@ class Colors {
   get = (i) => this.palette[Math.floor(i) % this.n];
 
   static hexToRgba = (hex, alpha) => {
-    var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
     return result
       ? `rgba(${[
           parseInt(result[1], 16),
