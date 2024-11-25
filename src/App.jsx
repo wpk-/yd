@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import * as tf from "@tensorflow/tfjs";
-import "@tensorflow/tfjs-backend-webgl"; // set backend to webgl
+//import "@tensorflow/tfjs-backend-webgl"; // set backend to webgl
+import "@tensorflow/tfjs-backend-webgpu";
 import Loader from "./components/loader";
 import ButtonHandler from "./components/btn-handler";
 import { detect, detectVideo } from "./utils/detect";
 import "./style/App.css";
+
+tf.setBackend("webgpu"); // set backend to webgpu
 
 /**
  * App component for YOLO11 Live Detection Application.
