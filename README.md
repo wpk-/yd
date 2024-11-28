@@ -68,6 +68,16 @@ The YoloDetect web application allows users to upload an image or video file, or
 
 **Note**: To see results regarding testing and deployment, please refer to the `assets` folder in the repository.
 
+## References
+
+The following resources were used to develop this project:
+
+- [Yolo11](https://docs.ultralytics.com/models/yolo11/)
+- [TensorFlow.js](https://www.tensorflow.org/js)
+- [Ultralytics](https://github.com/ultralytics/ultralytics)
+
+Special thanks to Wahyu Setianto for his contributions to projects involving the YOLO series of models, ONNX, TensorFlow.js, and more.
+
 ## Contributing
 
 Contributions are welcome! If you would like to contribute to this project, please raise an issue to discuss the changes you would like to make. Once the changes are approved, you can create a pull request.
