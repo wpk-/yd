@@ -31,11 +31,11 @@ const App = () => {
   const canvasRef = useRef(null);
 
   // model configs
-  const modelName = "yolov11n";
+  const modelName = "yolo11n";
 
   useEffect(() => {
     tf.ready().then(async () => {
-      const yolov11 = await tf.loadGraphModel(
+      const yolo11 = await tf.loadGraphModel(
         `${window.location.href}/${modelName}_web_model/model.json`,
         {
           onProgress: (fractions) => {
@@ -45,13 +45,13 @@ const App = () => {
       ); // load model
 
       // warming up model
-      const dummyInput = tf.ones(yolov11.inputs[0].shape);
-      const warmupResults = yolov11.execute(dummyInput);
+      const dummyInput = tf.ones(yolo11.inputs[0].shape);
+      const warmupResults = yolo11.execute(dummyInput);
 
       setLoading({ loading: false, progress: 1 });
       setModel({
-        net: yolov11,
-        inputShape: yolov11.inputs[0].shape,
+        net: yolo11,
+        inputShape: yolo11.inputs[0].shape,
       }); // set model & input shape
 
       tf.dispose([warmupResults, dummyInput]); // cleanup memory
