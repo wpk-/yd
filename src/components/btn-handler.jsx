@@ -4,7 +4,6 @@ import { Webcam } from "../utils/webcam";
 /**
  * ButtonHandler component handles the opening and closing of image, video, and webcam streams.
  */
-
 const ButtonHandler = ({ imageRef, cameraRef, videoRef }) => {
   const [streaming, setStreaming] = useState(null); // streaming state
   const inputImageRef = useRef(null); // video input reference
