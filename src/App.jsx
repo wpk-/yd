@@ -10,9 +10,9 @@ import "./style/App.css";
 tf.setBackend("webgpu"); // set backend to webgpu
 
 /**
- * App component for YOLO11 Live Detection Application.
+ * App component for YOLO Live Detection Application.
  *
- * This component initializes and loads a YOLO11 model using TensorFlow.js,
+ * This component initializes and loads a YOLO model using TensorFlow.js,
  * sets up references for image, camera, video, and canvas elements, and
  * handles the loading state and model configuration.
  */
@@ -30,11 +30,11 @@ const App = () => {
   const canvasRef = useRef(null);
 
   // model configs
-  const modelName = "yolo11n";
+  const modelName = "yolo12n";
 
   useEffect(() => {
     tf.ready().then(async () => {
-      const yolo11 = await tf.loadGraphModel(
+      const yolo = await tf.loadGraphModel(
         `${window.location.href}/${modelName}_web_model/model.json`,
         {
           onProgress: (fractions) => {
@@ -44,13 +44,13 @@ const App = () => {
       ); // load model
 
       // warming up model
-      const dummyInput = tf.ones(yolo11.inputs[0].shape);
-      const warmupResults = yolo11.execute(dummyInput);
+      const dummyInput = tf.ones(yolo.inputs[0].shape);
+      const warmupResults = yolo.execute(dummyInput);
 
       setLoading({ loading: false, progress: 1 });
       setModel({
-        net: yolo11,
-        inputShape: yolo11.inputs[0].shape,
+        net: yolo,
+        inputShape: yolo.inputs[0].shape,
       }); // set model & input shape
 
       tf.dispose([warmupResults, dummyInput]); // cleanup memory
@@ -63,9 +63,9 @@ const App = () => {
         <Loader>Loading model... {(loading.progress * 100).toFixed(2)}%</Loader>
       )}
       <div className="header">
-        <h1>📷 YOLO11 Live Detection App</h1>
+        <h1>📷 YOLO12 Live Detection App</h1>
         <p>
-          YOLO11 live detection application on browser powered by{" "}
+          YOLO12 live detection application on browser powered by{" "}
           <code>tensorflow.js</code>
         </p>
         <p>
