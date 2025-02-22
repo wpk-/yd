@@ -22,6 +22,7 @@ const App = () => {
     net: null,
     inputShape: [1, 0, 0, 3],
   }); // init model & input shape
+  const [modelName, setModelName] = useState("yolo11n"); // selected model name
 
   // references
   const imageRef = useRef(null);
@@ -29,11 +30,9 @@ const App = () => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
 
-  // model configs
-  const modelName = "yolo12n";
-
   useEffect(() => {
     tf.ready().then(async () => {
+      setLoading({ loading: true, progress: 0 });
       const yolo = await tf.loadGraphModel(
         `${window.location.href}/${modelName}_web_model/model.json`,
         {
@@ -55,7 +54,7 @@ const App = () => {
 
       tf.dispose([warmupResults, dummyInput]); // cleanup memory
     });
-  }, []);
+  }, [modelName]); // reload model when modelName changes
 
   return (
     <div className="App">
@@ -71,6 +70,13 @@ const App = () => {
         <p>
           Serving : <code className="code">{modelName}</code>
         </p>
+        <select
+          value={modelName}
+          onChange={(e) => setModelName(e.target.value)}
+        >
+          <option value="yolo12n">yolo12n</option>
+          <option value="yolo11n">yolo11n</option>
+        </select>
       </div>
 
       <div className="content">

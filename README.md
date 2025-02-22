@@ -10,6 +10,7 @@ The project is structured as follows:
 
 - `public/`: Static assets like images, icons, and fonts. Also contains the model folder.
 
+  - `yolo11n_web_model/`: Contains the Yolo11 nano object detection model files for tensorflow.js format.
   - `yolo12n_web_model/`: Contains the Yolo12 nano object detection model files for tensorflow.js format.
 
 - `src/`: Core source code for the application.
@@ -64,7 +65,7 @@ Open your local host to view the web application in your browser at `http://loca
 
 ## Results
 
-The YoloDetect web application allows users to upload an image or video file, or use their webcam to detect and locate objects within the media. The application uses the Yolo12 object detection model to identify objects in the media and draw bounding boxes around them. The detected objects are displayed with their corresponding confidence scores.
+The YoloDetect web application allows users to upload an image or video file, or use their webcam to detect and locate objects within the media. The application uses the Yolo object detection model to identify objects in the media and draw bounding boxes around them. The detected objects are displayed with their corresponding confidence scores.
 
 **Note**: To see results regarding testing and deployment, please refer to the `assets` folder in the repository.
 
@@ -73,6 +74,7 @@ The YoloDetect web application allows users to upload an image or video file, or
 The following resources were used to develop this project:
 
 - [Yolo12](https://docs.ultralytics.com/models/yolo12/)
+- [Yolo11](https://docs.ultralytics.com/models/yolo11/)
 - [TensorFlow.js](https://www.tensorflow.org/js)
 - [Ultralytics](https://github.com/ultralytics/ultralytics)
 
