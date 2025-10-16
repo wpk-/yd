@@ -1,8 +1,6 @@
 import * as tf from "@tensorflow/tfjs";
-import { renderBoxes } from "./renderBox";
-import labels from "./labels.json";
 
-const numClass = labels.length;
+const numClass = 17;
 
 /**
  * Preprocess image / frame before forwarded into the model
@@ -80,24 +78,24 @@ export const detect = async (source, model, canvasRef, callback = () => {}) => {
   const nms = await tf.image.nonMaxSuppressionAsync(
     boxes,
     scores,
-    500,
-    0.45,
+    100,
+    0.5,
     0.2
-  ); // NMS to filter boxes
+  );
 
   const boxes_data = boxes.gather(nms, 0).dataSync(); // indexing boxes by nms index
   const scores_data = scores.gather(nms, 0).dataSync(); // indexing scores by nms index
   const classes_data = classes.gather(nms, 0).dataSync(); // indexing classes by nms index
 
-  renderBoxes(canvasRef, boxes_data, scores_data, classes_data, [
-    xRatio,
-    yRatio,
-  ]); // render boxes
   tf.dispose([res, transRes, boxes, scores, classes, nms]); // clear memory
 
-  callback();
-
   tf.engine().endScope(); // end of scoping
+
+  return {
+    boxes: boxes_data,
+    scores: scores_data,
+    classes: classes_data,
+  }
 };
 
 /**
@@ -110,16 +108,25 @@ export const detectVideo = (vidSource, model, canvasRef) => {
   /**
    * Function to detect every frame from video
    */
+  let i = 0
+  let t = performance.now()
+
   const detectFrame = async () => {
+    if (++i === 10) {
+      let t0 = t
+      i = 0
+      t = performance.now()
+      console.log((10 * 1_000 / (t - t0)).toFixed(1))
+    }
+    
     if (vidSource.videoWidth === 0 && vidSource.srcObject === null) {
       const ctx = canvasRef.getContext("2d");
       ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height); // clean canvas
       return; // handle if source is closed
     }
 
-    detect(vidSource, model, canvasRef, () => {
-      requestAnimationFrame(detectFrame); // get another frame
-    });
+    await detect(vidSource, model);
+    requestAnimationFrame(detectFrame);
   };
 
   detectFrame(); // initialize to detect every frame
