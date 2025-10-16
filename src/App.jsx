@@ -1,30 +1,47 @@
 import { useState, useEffect, useRef } from "react";
 import * as tf from "@tensorflow/tfjs";
-//import "@tensorflow/tfjs-backend-webgl"; // set backend to webgl
-import "@tensorflow/tfjs-backend-webgpu";
-import ButtonHandler from "./components/btn-handler";
+import "@tensorflow/tfjs-backend-webgl";
+// import "@tensorflow/tfjs-backend-webgpu";
 import { detectVideo } from "./utils/detect";
+import { Webcam } from "./utils/webcam";
 
-tf.setBackend("webgpu"); // set backend to webgpu
+tf.setBackend('webgl');
+// tf.setBackend("webgpu"); // set backend to webgpu
 
 /**
  * App component for YOLO Live Detection Application.
  *
  * This component initializes and loads a YOLO model using TensorFlow.js,
- * sets up references for image, camera, video, and canvas elements, and
+ * sets up references for the camera element, and
  * handles the loading state and model configuration.
  */
 const App = () => {
-  const [loading, setLoading] = useState({ loading: true, progress: 0 }); // loading state
   const [model, setModel] = useState({
     net: null,
     inputShape: [1, 0, 0, 3],
   }); // init model & input shape
   const [modelName, setModelName] = useState("yolo11n"); // selected model name
 
+  const [streaming, setStreaming] = useState(null); // streaming state
+  const webcam = new Webcam(); // webcam handler
+
   // references
   const cameraRef = useRef(null);
-  const canvasRef = useRef(null);
+
+  const handleButtonClick = () => {
+    // if not streaming
+    if (streaming === null) {
+      // closing image streaming
+      if (streaming === "image") closeImage();
+      webcam.open(cameraRef.current); // open webcam
+      setStreaming("camera"); // set streaming to camera
+    }
+    // closing video streaming
+    else if (streaming === "camera") {
+      webcam.close(cameraRef.current);
+      setStreaming(null);
+    }
+  }
 
   useEffect(() => {
     tf.ready().then(async () => {
@@ -56,9 +73,12 @@ const App = () => {
           <option value="yolo11n">yolo11n</option>
         </select>
 
-        <ButtonHandler
-          cameraRef={cameraRef}
-        />
+        <div className="btn-container">
+          {/* Webcam Handler */}
+          <button onClick={handleButtonClick}>
+            {streaming === "camera" ? "Close" : "Open"} Webcam
+          </button>
+        </div>
       </div>
 
       <div className="content">
@@ -67,13 +87,8 @@ const App = () => {
           muted
           ref={cameraRef}
           onPlay={() =>
-            detectVideo(cameraRef.current, model, canvasRef.current)
+            detectVideo(cameraRef.current, model)
           }
-        />
-        <canvas
-          width={model.inputShape[1]}
-          height={model.inputShape[2]}
-          ref={canvasRef}
         />
       </div>
     </div>
