@@ -40,10 +40,8 @@ const preprocess = (source, modelWidth, modelHeight) => {
  * Function run inference and do detection from source.
  * @param {HTMLImageElement|HTMLVideoElement} source
  * @param {tf.GraphModel} model loaded YOLO tensorflow.js model
- * @param {HTMLCanvasElement} canvasRef canvas reference
- * @param {VoidFunction} callback function to run after detection process
  */
-export const detect = async (source, model, canvasRef, callback = () => {}) => {
+export const detect = async (source, model) => {
   const [modelWidth, modelHeight] = model.inputShape.slice(1, 3); // get model width and height
 
   tf.engine().startScope(); // start scoping tf engine
@@ -102,9 +100,8 @@ export const detect = async (source, model, canvasRef, callback = () => {}) => {
  * Function to detect video from every source.
  * @param {HTMLVideoElement} vidSource video source
  * @param {tf.GraphModel} model loaded YOLO tensorflow.js model
- * @param {HTMLCanvasElement} canvasRef canvas reference
  */
-export const detectVideo = (vidSource, model, canvasRef) => {
+export const detectVideo = (vidSource, model) => {
   /**
    * Function to detect every frame from video
    */
@@ -120,8 +117,6 @@ export const detectVideo = (vidSource, model, canvasRef) => {
     }
     
     if (vidSource.videoWidth === 0 && vidSource.srcObject === null) {
-      const ctx = canvasRef.getContext("2d");
-      ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height); // clean canvas
       return; // handle if source is closed
     }
 

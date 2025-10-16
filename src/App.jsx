@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import * as tf from "@tensorflow/tfjs";
-import "@tensorflow/tfjs-backend-webgl";
-// import "@tensorflow/tfjs-backend-webgpu";
+// import "@tensorflow/tfjs-backend-webgl";
+import "@tensorflow/tfjs-backend-webgpu";
 import { detectVideo } from "./utils/detect";
 import { Webcam } from "./utils/webcam";
 
-tf.setBackend('webgl');
-// tf.setBackend("webgpu"); // set backend to webgpu
+// tf.setBackend('webgl');
+tf.setBackend("webgpu"); // set backend to webgpu
 
 /**
  * App component for YOLO Live Detection Application.
@@ -22,6 +22,7 @@ const App = () => {
   }); // init model & input shape
   const [modelName, setModelName] = useState("yolo11n"); // selected model name
 
+  const [progress, setProgress] = useState(0)
   const [streaming, setStreaming] = useState(null); // streaming state
   const webcam = new Webcam(); // webcam handler
 
@@ -46,7 +47,8 @@ const App = () => {
   useEffect(() => {
     tf.ready().then(async () => {
       const yolo = await tf.loadGraphModel(
-        `./${modelName}_web_model/model.json`
+        `./${modelName}_web_model/model.json`,
+        {onProgress: (fr) => setProgress((100 * fr).toFixed(1))}
       ); // load model
 
       // warming up model
@@ -72,7 +74,8 @@ const App = () => {
           <option value="yolo12n">yolo12n</option>
           <option value="yolo11n">yolo11n</option>
         </select>
-
+        {progress}%
+        
         <div className="btn-container">
           {/* Webcam Handler */}
           <button onClick={handleButtonClick}>
