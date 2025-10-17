@@ -1,4 +1,117 @@
-import * as tf from "@tensorflow/tfjs";
+import * as tf from '@tensorflow/tfjs'
+// import '@tensorflow/tfjs-backend-webgl'
+import '@tensorflow/tfjs-backend-webgpu'
+
+tf.setBackend('webgpu')
+
+const NUM_CLASSES = 17
+
+let model = null
+let modelWidth = -1
+let modelHeight = -1
+
+
+export async function loadModel(modelName, onProgress) {
+  await tf.ready()
+
+  const graphModel = await tf.loadGraphModel(
+    `./${modelName}_web_model/model.json`,
+    {onProgress}
+  )
+
+  const dummy = tf.ones(graphModel.inputs[0].shape)
+  const warmup = graphModel.execute(dummy)
+  tf.dispose([warmup, dummy])
+
+  model?.dispose()
+  ;[
+    modelWidth,
+    modelHeight,
+  ] = graphModel.inputs[0].shape.slice(1)
+  model = graphModel
+}
+
+
+export function disposeModel() {
+  model?.dispose()
+  model = null
+}
+
+
+export async function predict(source) {
+  // console.log(tf.memory().numTensors)
+
+  // Transpose: [b, d, n] => [b, n, d]  (b=batch, d=detections, n=pixels)
+  const result = tf.tidy(() => {
+    const inputData = imageTensorFromSource(source)
+    return model.execute(inputData).transpose([0, 2, 1])
+  })
+  
+  const boxes = tf.tidy(() => {
+    // Predictions
+    const w = result.slice([0, 0, 2], [-1, -1, 1])
+    const h = result.slice([0, 0, 3], [-1, -1, 1])
+    const x1 = tf.sub(result.slice([0, 0, 0], [-1, -1, 1]), tf.div(w, 2))
+    const y1 = tf.sub(result.slice([0, 0, 1], [-1, -1, 1]), tf.div(h, 2))
+    // Non-maximum suppression requires (y1, x1, y2, x2) instead of (cx, cy, w, h).
+    return tf.concat([y1, x1, tf.add(y1, h), tf.add(x1, w)], 2).squeeze(0)
+  })
+
+  const [scores, classes] = tf.tidy(() => {
+    const rawScores = result.slice([0, 0, 4], [-1, -1, NUM_CLASSES]).squeeze(0)
+    return [rawScores.max(1), rawScores.argMax(1)]
+  })
+
+  // @TODO: Test: See if nonMaxSuppressionAsync is required for speed or if non-async is fine, too.
+  // @TODO: Make params configurable.
+  const maxOutputSize = 100
+  const iouThreshold = 0.5
+  const scoreThreshold = 0.2
+  const nms = await tf.image.nonMaxSuppressionAsync(
+    boxes, scores, maxOutputSize, iouThreshold, scoreThreshold)
+
+  const winningBoxes = boxes.gather(nms)
+  const winningScores = scores.gather(nms)
+  const winningClasses = classes.gather(nms)
+
+  const predictions = {
+    boxes: await winningBoxes.data(),
+    scores: await winningScores.data(),
+    classes: await winningClasses.data(),
+  }
+
+  tf.dispose([
+    result,
+    boxes, scores, classes,
+    nms,
+    winningBoxes, winningScores, winningClasses,
+  ])
+  
+  return predictions
+}
+
+
+function imageTensorFromSource(source) {
+  return tf.tidy(() => {
+    const img = tf.browser.fromPixels(source);
+
+    // Add padding to square the input image. [n, m] -> [n, n], n > m
+    const [h, w] = img.shape
+    const maxSize = Math.max(w, h)
+    const imgPadded = img.pad([
+      [0, maxSize - h], // padding y [bottom only]
+      [0, maxSize - w], // padding x [right only]
+      [0, 0],
+    ]);
+
+    return tf.image
+      .resizeBilinear(imgPadded, [modelWidth, modelHeight])
+      .div(255.0) // normalize
+      .expandDims(0); // add batch
+  })
+}
+
+
 
 const numClass = 17;
 

@@ -1,12 +1,7 @@
-import { useState, useEffect, useRef } from "react";
-import * as tf from "@tensorflow/tfjs";
-// import "@tensorflow/tfjs-backend-webgl";
-import "@tensorflow/tfjs-backend-webgpu";
-import { detectVideo } from "./utils/detect";
-import { Webcam } from "./utils/webcam";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { loadModel, disposeModel, predict } from "./utils/detect";
+import { startWebcam, stopWebcam, grabFrame } from "./utils/webcam";
 
-// tf.setBackend('webgl');
-tf.setBackend("webgpu"); // set backend to webgpu
 
 /**
  * App component for YOLO Live Detection Application.
@@ -16,52 +11,54 @@ tf.setBackend("webgpu"); // set backend to webgpu
  * handles the loading state and model configuration.
  */
 const App = () => {
-  const [model, setModel] = useState({
-    net: null,
-    inputShape: [1, 0, 0, 3],
-  }); // init model & input shape
-  const [modelName, setModelName] = useState("yolo11n"); // selected model name
+  const [model, setModel] = useState(null)
+  const [modelName, setModelName] = useState('yolo11n')
 
   const [progress, setProgress] = useState(0)
-  const [streaming, setStreaming] = useState(null); // streaming state
-  const webcam = new Webcam(); // webcam handler
+  const [streaming, setStreaming] = useState(false)
+  // const webcam = new Webcam()
 
   // references
   const cameraRef = useRef(null);
 
   const handleButtonClick = () => {
-    // if not streaming
-    if (streaming === null) {
-      // closing image streaming
-      if (streaming === "image") closeImage();
-      webcam.open(cameraRef.current); // open webcam
-      setStreaming("camera"); // set streaming to camera
-    }
-    // closing video streaming
-    else if (streaming === "camera") {
-      webcam.close(cameraRef.current);
-      setStreaming(null);
-    }
+    setStreaming((value) => !value)
   }
 
   useEffect(() => {
-    tf.ready().then(async () => {
-      const yolo = await tf.loadGraphModel(
-        `./${modelName}_web_model/model.json`,
-        {onProgress: (fr) => setProgress((100 * fr).toFixed(1))}
-      ); // load model
+    const videoElement = cameraRef.current
+    let stopped = false
 
-      // warming up model
-      const dummyInput = tf.ones(yolo.inputs[0].shape);
-      const warmupResults = yolo.execute(dummyInput);
+    if (streaming) {
+      (async () => {        
+        videoElement.addEventListener('play', async () => {
+          
+        let i = 0, t = performance.now()
+        while (!stopped) {
+          // const frame = await grabFrame()
+          const result = await predict(videoElement)
+          if (++i === 10) {
+            const t0 = t
+            i = 0;
+            t = performance.now()
+            console.log(`fps: ${(10 * 1000 / (t - t0)).toFixed(1)}`)
+          }
+        }
+        stopWebcam(videoElement)
+      }, {once: true})
+      await startWebcam(videoElement)
+      })()
+    }
 
-      setModel({
-        net: yolo,
-        inputShape: yolo.inputs[0].shape,
-      }); // set model & input shape
+    return () => {stopped = true}
+  }, [streaming])
 
-      tf.dispose([warmupResults, dummyInput]); // cleanup memory
-    });
+  useEffect(() => {
+    loadModel(
+      modelName,
+      (fr) => setProgress((100 * fr).toFixed(1))
+    )
+    return () => {disposeModel()}
   }, [modelName]); // reload model when modelName changes
 
   return (
@@ -79,7 +76,7 @@ const App = () => {
         <div className="btn-container">
           {/* Webcam Handler */}
           <button onClick={handleButtonClick}>
-            {streaming === "camera" ? "Close" : "Open"} Webcam
+            {streaming ? "Close" : "Open"} Webcam
           </button>
         </div>
       </div>
@@ -89,9 +86,9 @@ const App = () => {
           autoPlay
           muted
           ref={cameraRef}
-          onPlay={() =>
-            detectVideo(cameraRef.current, model)
-          }
+          // onPlay={() =>
+          //   detectVideo(cameraRef.current, model)
+          // }
         />
       </div>
     </div>
