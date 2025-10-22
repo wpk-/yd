@@ -1,10 +1,15 @@
-let stream = null
-let imageCapture = null
+/*
+ * export async startWebcam
+ * export stopWebcam
+ */
+// `createImageBitmap` is 50% faster than `ImageCapture.grabFrame`.
+// The code therefore uses a `<video>` element for reading images
+// from the video stream.
+// Reading pixel data from the video element is part of `detect.js`.
+let videoElement = null
 
-let videoElem = null
 
-
-export async function startWebcam(videoElement, constraints) {
+export async function startWebcam(videoElem, constraints) {
   if (!navigator.mediaDevices?.getUserMedia) {
     throw new Error('Webcam not supported in your browser.')
   }
@@ -15,71 +20,41 @@ export async function startWebcam(videoElement, constraints) {
     audio: false,
     video: {
       facingMode: 'environment',
-      height: 640,
-      width: 640,
+      // frameRate: 15,
+      height: {max: 640},
+      width: {max: 640},
     }
   }
 
-  stream = await navigator.mediaDevices.getUserMedia(constraints)
-  videoElem = videoElement
-  videoElement && (videoElement.srcObject = stream)
-  imageCapture = new ImageCapture(stream.getVideoTracks()[0])
+  try {
+    // Note the possibility that this promise will not
+    // resolve at all. The user is not required to allow
+    // or deny the request. They can also decide not to
+    // respond at all.
+    const stream = await navigator
+      .mediaDevices
+      .getUserMedia(constraints)
+    console.log(constraints)
+    videoElement = videoElem
+    videoElement.srcObject = stream
+  }
+  catch (err) {
+    // Used denied access to the webcam.
+    // We report the error to the console but let the
+    // code flow continue. Parsing the media stream
+    // should be started from the `videoElement.onPlay`
+    // event, not from this promise's resolution.
+    console.error(`${err.name}: ${err.description}`)
+  }
 }
 
 
-export function stopWebcam(videoElement) {
-  stream?.getTracks().forEach(track => track.stop())
-  videoElem && (videoElem.srcObject = null)
-  videoElem = null
-  imageCapture = null
-  stream = null
-}
-
-
-export async function grabFrame() {
-  // Returns an ImageBitmap.
-  // return await imageCapture?.grabFrame()
-  return await createImageBitmap(videoElem)
-}
-
-
-/**
- * Class to handle webcam
- */
-export class Webcam {
-  /**
-   * Open webcam and stream it through video tag.
-   * @param {HTMLVideoElement} videoRef video tag reference
-   */
-  open = (videoRef) => {
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-      navigator.mediaDevices
-        .getUserMedia({
-          audio: false,
-          video: {
-            facingMode: "environment",
-          },
-        })
-        .then((stream) => {
-          videoRef.srcObject = stream;
-        });
-    } else {
-      alert("Can't open Webcam!");
-    }
-  };
-
-  /**
-   * Close opened webcam.
-   * @param {HTMLVideoElement} videoRef video tag reference
-   */
-  close = (videoRef) => {
-    if (videoRef.srcObject) {
-      videoRef.srcObject.getTracks().forEach((track) => {
-        track.stop();
-      });
-      videoRef.srcObject = null;
-    } else {
-      alert("Please open Webcam first!");
-    }
-  };
+export function stopWebcam() {
+  if (videoElement) {
+    videoElement.srcObject.getTracks().forEach(
+      track => track.stop()
+    )
+    videoElement.srcObject = null
+    videoElement = null
+  }
 }

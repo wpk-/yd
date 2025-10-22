@@ -1,6 +1,16 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { loadModel, disposeModel, predict } from "./utils/detect";
-import { startWebcam, stopWebcam, grabFrame } from "./utils/webcam";
+import { useState, useEffect, useRef } from "react";
+
+import './App.css'
+import { loadModel, disposeModel } from './utils/detect';
+import { startWebcam, stopWebcam } from './utils/webcam';
+import { attach, detach } from './utils/oor';
+
+
+const targets = []
+targets[ 0] = {label: 'person', threshold: 0.2, action: 'blur'}
+targets[15] = {label: 'cat', threshold: 0.2, action: 'mark'}
+targets[16] = {label: 'dog', threshold: 0.2, action: 'mark'}
+targets[57] = {label: 'couch', threshold: 0.7, action: 'mark'}
 
 
 /**
@@ -11,55 +21,50 @@ import { startWebcam, stopWebcam, grabFrame } from "./utils/webcam";
  * handles the loading state and model configuration.
  */
 const App = () => {
-  const [model, setModel] = useState(null)
   const [modelName, setModelName] = useState('yolo11n')
-
   const [progress, setProgress] = useState(0)
   const [streaming, setStreaming] = useState(false)
-  // const webcam = new Webcam()
+  const loading = progress < 1
 
   // references
-  const cameraRef = useRef(null);
+  const cameraRef = useRef(null)
+  const canvasRef = useRef(null)
+  const observerRef = useRef(null)
 
   const handleButtonClick = () => {
     setStreaming((value) => !value)
   }
 
   useEffect(() => {
-    const videoElement = cameraRef.current
-    let stopped = false
-
     if (streaming) {
-      (async () => {        
-        videoElement.addEventListener('play', async () => {
-          
-        let i = 0, t = performance.now()
-        while (!stopped) {
-          // const frame = await grabFrame()
-          const result = await predict(videoElement)
-          if (++i === 10) {
-            const t0 = t
-            i = 0;
-            t = performance.now()
-            console.log(`fps: ${(10 * 1000 / (t - t0)).toFixed(1)}`)
-          }
-        }
-        stopWebcam(videoElement)
-      }, {once: true})
-      await startWebcam(videoElement)
+      (async () => {
+        attach(cameraRef.current, canvasRef.current)
+        await startWebcam(cameraRef.current)
       })()
     }
 
-    return () => {stopped = true}
+    return () => {stopWebcam(); detach()}
   }, [streaming])
 
   useEffect(() => {
-    loadModel(
+    loadModel({
       modelName,
-      (fr) => setProgress((100 * fr).toFixed(1))
-    )
+      onProgress: (fr) => setProgress((100 * fr).toFixed(1))
+    })
     return () => {disposeModel()}
-  }, [modelName]); // reload model when modelName changes
+  }, [modelName])
+
+  useEffect(() => {
+    observerRef.current = new ResizeObserver(() => {
+      const scaleX = cameraRef.current.clientWidth / cameraRef.current.videoWidth
+      const scaleY = cameraRef.current.clientHeight / cameraRef.current.videoHeight
+      canvasRef.current.width = cameraRef.current.clientWidth
+      canvasRef.current.height = cameraRef.current.clientHeight
+      canvasRef.current.getContext('2d').scale(scaleX, scaleY)
+    })
+    observerRef.current.observe(cameraRef.current)
+    return () => { observerRef.current.disconnect() }
+  }, [])
 
   return (
     <div className="App">
@@ -81,7 +86,7 @@ const App = () => {
         </div>
       </div>
 
-      <div className="content">
+      <div className="content" style={{position:'relative'}}>
         <video
           autoPlay
           muted
@@ -90,6 +95,7 @@ const App = () => {
           //   detectVideo(cameraRef.current, model)
           // }
         />
+        <canvas ref={canvasRef}></canvas>
       </div>
     </div>
   );

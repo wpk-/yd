@@ -1,0 +1,13 @@
+*, *:before, *:after {
+    box-sizing: border-box
+}
+
+/* .content {
+} */
+.content video {
+    max-height: 640px;
+    max-width: 640px;
+    width: 320px;
+}
+/* .content canvas {
+} */
