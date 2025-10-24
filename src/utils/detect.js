@@ -2,14 +2,10 @@
  * export disposeModel
  * export async loadModel
  * export async predict
- * imageTensorFromSource
- * async filterResults
+ * preprocess
+ * async postprocess
  */
 import * as tf from '@tensorflow/tfjs'
-// import '@tensorflow/tfjs-backend-webgl'
-import '@tensorflow/tfjs-backend-webgpu'
-
-tf.setBackend('webgpu')
 
 // YOLO model:
 let model = null
@@ -51,14 +47,18 @@ export async function loadModel({
 }
 
 
-export async function predict(source) {
+export async function predict(imageTensor) {
   // console.log(tf.memory().numTensors)
 
-  // Transpose: [b, d, n] => [b, n, d]  (b=batch, d=detections, n=pixels)
   const result = tf.tidy(() => {
-    const inputData = imageTensorFromSource(source)
-    return model.execute(inputData).transpose([0, 2, 1])
+    // For a video source, img size will match the video *stream* size,
+    // which may differ from the <video> element's dimensions. To avoid
+    // scaling, add the model input size as a constraint on the stream.
+    const data = preprocess(imageTensor)
+    // Transpose: [b, d, n] => [b, n, d]  (b=batch, d=detections, n=pixels)
+    return model.execute(data).transpose([0, 2, 1])
   })
+
   const boxes = tf.tidy(() => {
     // Predictions
     const w = result.slice([0, 0, 2], [-1, -1, 1])
@@ -72,38 +72,35 @@ export async function predict(source) {
     const rawScores = result.slice([0, 0, 4], [-1, -1, 17]).squeeze(0)
     return [rawScores.max(1), rawScores.argMax(1)]
   })
-  const detections = await filterResults(classes, scores, boxes)
+
+  const detections = await postprocess([classes, scores, boxes])
   tf.dispose([result, boxes, scores, classes])
   return detections
 }
 
 
-function imageTensorFromSource(source) {
-  // For a video source, img size will match the video *stream* size,
-  // which may differ from the <video> element's dimensions. To avoid
-  // scaling, add the model input size as a constraint on the stream.
-
+function preprocess(imageTensor) {
   return tf.tidy(() => {
-    const img = tf.browser.fromPixels(source);
-
     // Add padding to square the input image. [n, m] -> [n, n], n > m
-    const [h, w] = img.shape
+    const [h, w] = imageTensor.shape
     const maxSize = Math.max(w, h)
-    const imgPadded = img.pad([
+    const imgPadded = imageTensor.pad([
       [0, maxSize - h], // padding y (bottom only)
       [0, maxSize - w], // padding x (right only)
       [0, 0],
-    ]);
+    ])
 
     return tf.image
       .resizeBilinear(imgPadded, [modelWidth, modelHeight])
-      .div(255.0) // normalize
-      .expandDims(0); // add batch
+      // .div(255.0) // normalize
+      .expandDims(0) // add batch
   })
 }
 
 
-async function filterResults(classes, scores, boxes) {
+async function postprocess(results) {
+  const [classes, scores, boxes] = results
+
   const maxOutputSize = 100
   const iouThreshold = 0.45
   const scoreThreshold = 0.2

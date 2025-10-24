@@ -1,4 +1,11 @@
-import { predict } from './detect';
+import * as tf from '@tensorflow/tfjs'
+// import '@tensorflow/tfjs-backend-webgl'
+import '@tensorflow/tfjs-backend-webgpu'
+
+import { predict } from './detect'
+// import { filterBlur } from './blur'
+
+tf.setBackend('webgpu')
 
 let ctxBlur = null
 let ctxOut = null
@@ -10,35 +17,48 @@ let srcHeight = 0
 let isPlaying = false
 
 
+async function grabFrame() {
+    const img = await tf.browser.fromPixelsAsync(srcElement)
+    const normalized = img.div(255.0)
+    img.dispose()
+    return normalized
+}
+
+
 async function nextFrame() {
     await new Promise(r => requestAnimationFrame(r))
 }
 
 
-async function processFrame() {
-    const [classes, scores, boxes] = await predict(srcElement)
-    let hasBlur = false
+// function blurImage(imageTensor) {
+//     const blurred = filterBlur(imageTensor, 11)
+//     const clipped = blurred.clipByValue(0, 1)
+//     tf.browser.draw(clipped, ctxBlur.canvas)
+//     tf.dispose([blurred, clipped])
+// }
 
-    ctxBlur.clearRect(0, 0, srcWidth, srcHeight)
+
+async function processFrame() {
+    const image = await grabFrame()
+    const [classes, scores, boxes] = await predict(image)
+    // blurImage(image)
+    image.dispose()
+
     ctxOut.drawImage(srcElement, 0, 0)
+    ctxBlur.drawImage(srcElement, 0, 0)
 
     classes.forEach((cls, i) => {
         if (cls === 0) {
             const [y, x, y2, x2] = boxes[i]
             const [w, h] = [x2 - x, y2 - y]
-            ctxBlur.drawImage(srcElement, x, y, w, h, x, y, w, h)
-            hasBlur = true
+            ctxOut.drawImage(ctxBlur.canvas, x, y, w, h, x, y, w, h)
         }
     })
 
-    if (hasBlur) {
-        ctxOut.drawImage(ctxBlur.canvas, 0, 0)
-    }
-
     classes.forEach((cls, i) => {
-        if (cls !== 1) {
+        if (cls !== 0) {
             const [y, x, y2, x2] = boxes[i]
-            const [w, h] = [x2 -x, y2 -y]
+            const [w, h] = [x2 - x, y2 - y]
             ctxOut.strokeRect(x, y, w, h)
         }
     })
